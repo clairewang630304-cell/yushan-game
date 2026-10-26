@@ -1,0 +1,2058 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>《玉山之歌 3D》沉浸式語文生態冒險遊戲｜四上第四課</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    :root {
+      --primary: #1b6b52;
+      --primary-light: #2ca57d;
+      --accent: #f4a261;
+      --gold: #ffd166;
+      --sky-dark: #0f2027;
+      --bg-glass: rgba(15, 32, 39, 0.78);
+      --card-glass: rgba(255, 255, 255, 0.92);
+      --text-light: #f8f9fa;
+      --text-dark: #1d3557;
+      --danger: #e63946;
+      --success: #2a9d8f;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0b192c;
+      color: var(--text-light);
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+
+    /* Top Navigation Bar */
+    .top-hud {
+      position: fixed;
+      top: 12px;
+      left: 16px;
+      right: 16px;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .hud-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .brand-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .altimeter-badge {
+      background: rgba(44, 165, 125, 0.28);
+      border: 1px solid var(--primary-light);
+      color: #a8ffdb;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .hud-btn {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      padding: 6px 13px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.86rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .hud-btn:hover {
+      background: var(--primary-light);
+      transform: translateY(-1px);
+      border-color: #fff;
+    }
+
+    .hud-btn.active {
+      background: var(--accent);
+      color: #1a1a1a;
+      border-color: var(--gold);
+    }
+
+    /* Chapter Selector Bar (Left / Top-Center) */
+    .chapter-rail {
+      position: fixed;
+      left: 16px;
+      top: 72px;
+      bottom: 90px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .chapter-pill {
+      pointer-events: auto;
+      background: var(--bg-glass);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.82);
+      padding: 9px 14px;
+      border-radius: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.25s ease;
+      width: 215px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    }
+
+    .chapter-pill:hover {
+      transform: translateX(4px);
+      border-color: var(--gold);
+      color: #fff;
+    }
+
+    .chapter-pill.active {
+      background: linear-gradient(135deg, #1b6b52, #2a9d8f);
+      border-color: var(--gold);
+      color: #fff;
+      transform: translateX(6px);
+      box-shadow: 0 6px 20px rgba(42, 157, 143, 0.5);
+    }
+
+    .chapter-pill.completed .ch-num {
+      background: var(--gold);
+      color: #1d3557;
+    }
+
+    .ch-num {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.82rem;
+      flex-shrink: 0;
+    }
+
+    .ch-info {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      overflow: hidden;
+    }
+
+    .ch-title {
+      font-size: 0.86rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .ch-sub {
+      font-size: 0.72rem;
+      opacity: 0.8;
+      white-space: nowrap;
+    }
+
+    /* Right Side Quest & Poetry Panel */
+    .quest-panel {
+      position: fixed;
+      right: 16px;
+      top: 72px;
+      width: 340px;
+      z-index: 10;
+      background: var(--bg-glass);
+      backdrop-filter: blur(14px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      padding: 18px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: calc(100vh - 165px);
+      overflow-y: auto;
+    }
+
+    .poem-box {
+      background: rgba(255, 255, 255, 0.09);
+      border-left: 4px solid var(--gold);
+      padding: 12px 14px;
+      border-radius: 10px;
+      position: relative;
+    }
+
+    .poem-tag {
+      font-size: 0.73rem;
+      color: var(--gold);
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .poem-lines {
+      font-size: 1.05rem;
+      line-height: 1.65;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 1px;
+      white-space: pre-line;
+    }
+
+    .speak-btn {
+      background: rgba(255, 209, 102, 0.2);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+
+    .speak-btn:hover {
+      background: var(--gold);
+      color: #1d3557;
+    }
+
+    .mission-box {
+      background: rgba(42, 157, 143, 0.18);
+      border: 1px solid rgba(42, 157, 143, 0.5);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .mission-header {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: #80ffdb;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .mission-desc {
+      font-size: 0.86rem;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.92);
+      margin-bottom: 10px;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 10px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ffd166, #06d6a0);
+      transition: width 0.3s ease;
+    }
+
+    .interactive-widget {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .action-btn {
+      width: 100%;
+      padding: 11px 16px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #f4a261, #e76f51);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.95rem;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(231, 111, 81, 0.4);
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    .action-btn:hover {
+      filter: brightness(1.1);
+      transform: translateY(-2px);
+    }
+
+    .action-btn:active {
+      transform: scale(0.97);
+    }
+
+    .knowledge-card {
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: #d8f3dc;
+    }
+
+    .knowledge-card strong {
+      color: var(--gold);
+    }
+
+    /* Bottom Control Bar & Mascot Guide */
+    .bottom-hud {
+      position: fixed;
+      bottom: 14px;
+      left: 16px;
+      right: 16px;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+
+    .mascot-bubble {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 209, 102, 0.4);
+      padding: 10px 18px;
+      border-radius: 20px;
+      max-width: 580px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .mascot-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2a9d8f, #1b4332);
+      border: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      flex-shrink: 0;
+    }
+
+    .mascot-text {
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .mascot-name {
+      font-size: 0.76rem;
+      font-weight: 800;
+      color: var(--gold);
+      margin-bottom: 2px;
+    }
+
+    .controls-hint {
+      pointer-events: auto;
+      background: var(--bg-glass);
+      backdrop-filter: blur(10px);
+      padding: 8px 14px;
+      border-radius: 14px;
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    /* Modals (Quiz, Thinking Map, Concrete Poem) */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(6, 15, 25, 0.82);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #f8f9fa;
+      color: var(--text-dark);
+      width: 100%;
+      max-width: 820px;
+      max-height: 90vh;
+      border-radius: 24px;
+      padding: 26px;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 18px;
+      right: 20px;
+      background: #e9ecef;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .modal-close:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .modal-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-subtitle {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 18px;
+    }
+
+    /* Quiz Styling */
+    .quiz-option {
+      width: 100%;
+      text-align: left;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+      border-radius: 12px;
+      border: 2px solid #dee2e6;
+      background: #fff;
+      font-size: 0.96rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #1d3557;
+    }
+
+    .quiz-option:hover {
+      border-color: var(--primary-light);
+      background: #f1faee;
+    }
+
+    .quiz-option.correct {
+      background: #d8f3dc;
+      border-color: #2a9d8f;
+      color: #1b4332;
+    }
+
+    .quiz-option.wrong {
+      background: #ffe3e3;
+      border-color: #e63946;
+      color: #780000;
+    }
+
+    /* Thinking Map Worksheet Grid */
+    .worksheet-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .ws-card {
+      background: #fff;
+      border: 2px solid #cce3de;
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ws-card label {
+      font-weight: 800;
+      font-size: 0.88rem;
+      color: var(--primary);
+    }
+
+    .ws-card input, .ws-card textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ced4da;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .photo-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .photo-slot {
+      background: #e9ecef;
+      border: 2px dashed #adb5bd;
+      border-radius: 10px;
+      aspect-ratio: 4/3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      font-size: 0.75rem;
+      color: #6c757d;
+    }
+
+    .photo-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Concrete Poem Staircase Visualization */
+    .concrete-poem-stage {
+      background: linear-gradient(180deg, #1d3557 0%, #2a9d8f 55%, #52b788 100%);
+      color: #fff;
+      padding: 24px;
+      border-radius: 18px;
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: center;
+      gap: 18px;
+      overflow-x: auto;
+      min-height: 360px;
+    }
+
+    .vertical-col {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-size: 1.08rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      line-height: 1.6;
+      padding: 8px 4px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .vertical-col:hover {
+      background: rgba(255, 255, 255, 0.18);
+      color: var(--gold);
+      transform: translateY(-4px);
+    }
+
+    /* Pasibutbut 8 Singers Circle UI */
+    .bunun-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .singer-btn {
+      padding: 8px 4px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 209, 102, 0.5);
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .singer-btn.singing {
+      background: var(--gold);
+      color: #1d3557;
+      box-shadow: 0 0 12px var(--gold);
+    }
+
+    /* Flash effect for Polaroid Camera */
+    #camera-flash {
+      position: fixed;
+      inset: 0;
+      background: #fff;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+
+    /* Floating 3D Labels */
+    .floating-toast {
+      position: fixed;
+      top: 76px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      background: rgba(255, 209, 102, 0.95);
+      color: #1d3557;
+      padding: 10px 22px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .floating-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(6px);
+    }
+
+    @media (max-width: 900px) {
+      .chapter-rail {
+        flex-direction: row;
+        top: 64px;
+        bottom: auto;
+        left: 10px;
+        right: 10px;
+        overflow-x: auto;
+        justify-content: flex-start;
+      }
+      .chapter-pill {
+        width: auto;
+        padding: 6px 10px;
+      }
+      .ch-sub { display: none; }
+      .quest-panel {
+        top: auto;
+        bottom: 70px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-height: 42vh;
+      }
+      .controls-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Camera Flash Overlay -->
+  <div id="camera-flash"></div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="floating-toast">✨ 發現玉山新知識！</div>
+
+  <!-- 3D WebGL Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- Top Navigation Bar -->
+  <header class="top-hud">
+    <div class="hud-group">
+      <div class="brand-title">⛰️ 玉山之歌 3D</div>
+      <div id="altimeter" class="altimeter-badge">海拔 0 m｜太平洋高空</div>
+      <div id="score-badge" class="altimeter-badge" style="background:rgba(244,162,97,0.25);border-color:#f4a261;color:#ffd166;">
+        🎵 樂音能量：0 / 600
+      </div>
+    </div>
+
+    <div class="hud-group">
+      <button class="hud-btn" id="btn-role-toggle" onclick="togglePlayerRole()">
+        🍃 視角：頑皮的風
+      </button>
+      <button class="hud-btn" onclick="takePolaroidPhoto()">
+        📸 拍立得 (<span id="photo-count">0</span>/4)
+      </button>
+      <button class="hud-btn" onclick="openModal('poem-modal')">
+        📜 圖像詩賞析
+      </button>
+      <button class="hud-btn" onclick="openModal('quiz-modal')">
+        ✍️ 字詞大挑戰
+      </button>
+      <button class="hud-btn active" onclick="openModal('map-modal')">
+        🗺️ 課文思考地圖
+      </button>
+    </div>
+  </header>
+
+  <!-- Left Chapter Selector -->
+  <nav class="chapter-rail" id="chapter-rail"></nav>
+
+  <!-- Right Active Chapter & Poetry Panel -->
+  <aside class="quest-panel">
+    <div class="poem-box">
+      <div class="poem-tag">
+        <span id="poem-section-label">第一節・地理與位置</span>
+        <button class="speak-btn" onclick="speakCurrentPoem()">🔊 朗讀詩句</button>
+      </div>
+      <div class="poem-lines" id="poem-display"></div>
+    </div>
+
+    <div class="mission-box">
+      <div class="mission-header">
+        <span id="mission-title">🎯 關卡任務</span>
+        <span id="mission-progress-text">0%</span>
+      </div>
+      <div class="mission-desc" id="mission-desc"></div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="mission-progress-bar"></div>
+      </div>
+      <div class="interactive-widget" id="chapter-controls"></div>
+    </div>
+
+    <div class="knowledge-card" id="knowledge-card"></div>
+  </aside>
+
+  <!-- Bottom Mascot & Controls Hint -->
+  <footer class="bottom-hud">
+    <div class="mascot-bubble">
+      <div class="mascot-avatar" id="mascot-icon">⛰️</div>
+      <div>
+        <div class="mascot-name" id="mascot-name">精神領袖・玉山先生</div>
+        <div class="mascot-text" id="mascot-dialogue">
+          嗨！我是臺灣之光玉山先生！點擊畫面中的發光地標或右側互動按鈕，一起譜寫《玉山之歌》吧！
+        </div>
+      </div>
+    </div>
+
+    <div class="controls-hint">
+      <span>🖱️ 左鍵拖曳：旋轉 3D 視角</span>
+      <span>🔍 滾輪：遠近縮放</span>
+      <span>⌨️ A / D 或 ⬅️ ➡️：風之滑翔移動</span>
+    </div>
+  </footer>
+
+  <!-- MODAL 1: Concrete Poem (圖像詩與全文朗讀) -->
+  <div class="modal-overlay" id="poem-modal">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeModal('poem-modal')">✕</button>
+      <div class="modal-title">📜 路寒袖《玉山之歌》圖像詩動態賞析</div>
+      <div class="modal-subtitle">
+        觀察看看：詩句的排列方式是不是就像一座高山與順流而下的溪水？點擊任意詩行可聽語音朗讀與修辭解析！
+      </div>
+      <div style="margin-bottom:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="hud-btn active" onclick="speakFullPoem()">🔊 全文配樂朗讀</button>
+        <button class="hud-btn" style="background:#2a9d8f;" onclick="stopSpeech()">⏹️ 停止朗讀</button>
+      </div>
+      <div class="concrete-poem-stage" id="concrete-poem-stage"></div>
+      <div id="poem-analysis-tip" style="margin-top:14px; padding:12px; background:#e9f5f2; border-radius:10px; font-weight:600; color:#1b4332;">
+        💡 點擊上方任一列詩句，即可查看作者的「事實 vs 詩人聯想（擬人/比喻）」！
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Vocabulary & Comprehension Quiz (字詞大挑戰) -->
+  <div class="modal-overlay" id="quiz-modal">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeModal('quiz-modal')">✕</button>
+      <div class="modal-title">✍️ 玉山之歌・字詞義與閱讀理解大挑戰</div>
+      <div class="modal-subtitle">
+        整合課堂簡報重點：字義推論（凝、領、盤）、多音字（縫）、成語運用與錯別字找碴！
+      </div>
+      <div id="quiz-container"></div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Thinking Map Digital Worksheet (課文思考地圖) -->
+  <div class="modal-overlay" id="map-modal">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeModal('map-modal')">✕</button>
+      <div class="modal-title">🗺️ 【L4 課文思考地圖】圖像化＋擬人對話工作坊</div>
+      <div class="modal-subtitle">
+        請運用「圖像化＋擬人對話」的本領，結合你在 3D 玉山拍下的照片，完成專屬課文思考地圖並下載保存！
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+        <input id="ws-class" type="text" placeholder="班級 (例：404)" value="404" style="padding:8px 12px; border-radius:8px; border:1px solid #ccc; width:130px;" />
+        <input id="ws-seat" type="text" placeholder="座號 (例：08)" style="padding:8px 12px; border-radius:8px; border:1px solid #ccc; width:120px;" />
+        <input id="ws-name" type="text" placeholder="學生姓名" style="padding:8px 12px; border-radius:8px; border:1px solid #ccc; flex:1;" />
+      </div>
+
+      <h4 style="color:#1b6b52; margin-top:8px;">📸 我的玉山 3D 拍立得相簿（可在遊戲右上角點擊「拍立得」取景）</h4>
+      <div class="photo-strip" id="photo-strip">
+        <div class="photo-slot">尚未拍攝 1</div>
+        <div class="photo-slot">尚未拍攝 2</div>
+        <div class="photo-slot">尚未拍攝 3</div>
+        <div class="photo-slot">尚未拍攝 4</div>
+      </div>
+
+      <h4 style="color:#1b6b52; margin-top:8px;">💬 擬人對話創作（可自由修改或點擊「AI 靈感範例」）</h4>
+      <div class="worksheet-form">
+        <div class="ws-card">
+          <label>🌏 1. 太平洋與東亞島弧（微笑位置）</label>
+          <textarea id="ws-q1" rows="2">嗨！我是臺灣，位在太平洋微笑曲線最彎的地方，玉山就站在我笑意的最深處！</textarea>
+        </div>
+        <div class="ws-card">
+          <label>🌿 2. 山腳下的闊葉（副熱帶闊葉林）</label>
+          <textarea id="ws-q2" rows="2">呼～山腳下好熱呀！快用我像扇子一樣的大葉子搖一搖、搧搧風降溫吧！</textarea>
+        </div>
+        <div class="ws-card">
+          <label>🌲 3. 山頭上的針葉（寒帶針葉林）</label>
+          <textarea id="ws-q3" rows="2">山頂風大又寒冷，我們細細密密的針葉就像裁縫師，一針一線幫玉山縫製保暖綠毛衣！</textarea>
+        </div>
+        <div class="ws-card">
+          <label>🥾 4. 八通關古道（人文一級古蹟）</label>
+          <textarea id="ws-q4" rows="2">我彎彎曲曲的石階牽起千年歷史與現代登山客，每天都在訴說臺灣島嶼與布農族的故事。</textarea>
+        </div>
+        <div class="ws-card">
+          <label>📡 5. 峰頂氣象站（海拔 3845m）</label>
+          <textarea id="ws-q5" rows="2">我站得全臺灣最高！每天第一個領受太平洋吹來的第一道風，守護大家的氣象安全！</textarea>
+        </div>
+        <div class="ws-card">
+          <label>🍃 6. 頑皮的風 ＆ 盤坐的小溪</label>
+          <textarea id="ws-q6" rows="2">我是頑皮的風，吹著多變樂曲從山頂滑溜而下；我們小溪盤坐在綠意間聆聽，一起翻唱玉山之歌！</textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:18px; display:flex; gap:12px; justify-content:flex-end; flex-wrap:wrap;">
+        <button class="action-btn" style="width:auto; background:linear-gradient(135deg,#2a9d8f,#1b6b52);" onclick="exportWorksheetImage()">
+          📥 匯出「課文思考地圖」海報圖檔 (.PNG)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**************************************************************
+     * 1. 教材核心資料與六大關卡定義 (Curriculum & Chapter Data)
+     **************************************************************/
+    const CHAPTERS = [
+      {
+        id: 0,
+        title: "太平洋的微笑",
+        sub: "東亞島弧與玉山定位",
+        elevation: "海拔 0m → 遠眺 3,952m",
+        sectionLabel: "第一段・地理位置與微笑曲線",
+        poem: "太平洋的微笑，\n淺淺一彎，\n就靜止了。\n玉山，\n站在笑意的最深處。",
+        missionTitle: "🎯 任務一：巡航東亞島弧微笑曲線",
+        missionDesc: "點擊海面上的 4 個島弧航點（千島群島→日本→琉球→臺灣），或點擊下方按鈕引導洋流微風，找出「笑意的最深處」——玉山！",
+        knowledge: "<strong>💡 玉山知識家：</strong><br>• 東亞島弧弧線猶如太平洋的一抹微笑。<br>• 臺灣位於微笑曲線中央，<strong>玉山主峰高 3,952 公尺</strong>（相當於 7.7 座 101 大樓），是<strong>東北亞第一高峰</strong>！",
+        mascotText: "從太空往下看，千島群島、日本、琉球、臺灣到菲律賓連成一道美麗的弧線，就像太平洋的淺淺微笑喔！",
+        camPos: { x: 0, y: 26, z: 46 },
+        lookAt: { x: 0, y: 4, z: 0 }
+      },
+      {
+        id: 1,
+        title: "山腳喊熱搧風",
+        sub: "副熱帶闊葉林生態",
+        elevation: "海拔 500 ~ 1,500 公尺",
+        sectionLabel: "第二段・山腳下的闊葉林",
+        poem: "大大的闊葉輕搖，\n在山腳下喊熱搧風；",
+        missionTitle: "🎯 任務二：幫山腳闊葉林搧風降溫",
+        missionDesc: "山腳下氣候炎熱（目前 35°C）！請連續點擊「搖動大闊葉搧風」或直接點擊 3D 森林中的大樹，幫森林降溫至清爽的 25°C！",
+        knowledge: "<strong>💡 語文與生態小百科：</strong><br>• 詩人將<strong>「大大的闊葉」比喻為「扇子」</strong>，並用<strong>擬人法</strong>寫出樹葉在山腳下喊熱搧風。<br>• 生字注意：<strong>「搧」風</strong>是「手」部（動詞），不要寫成「扇」喔！",
+        mascotText: "山腳下屬於副熱帶氣候，長滿了臺灣檫樹、樟樹等「闊葉林」，葉片寬大就像扇子一樣！快幫牠們搧搧風吧！",
+        camPos: { x: -16, y: 7, z: 18 },
+        lookAt: { x: -6, y: 5, z: 4 }
+      },
+      {
+        id: 2,
+        title: "時空迴廊八通關",
+        sub: "百年古道與布農八部合音",
+        elevation: "海拔 1,500 ~ 2,800 公尺",
+        sectionLabel: "第二段・人文歷史古道",
+        poem: "古道彎彎的牽起古今，\n訴說島嶼的故事。",
+        missionTitle: "🎯 任務三：點亮八通關古道＆共鳴八部合音",
+        missionDesc: "點擊下方的「布農族八部合音（1~8號歌者）」進行自然泛音合奏，牽起千年歷史與現代的金色記憶絲線！",
+        knowledge: "<strong>💡 人文與歷史背景：</strong><br>• <strong>八通關古道</strong>建於清朝時期，是國家<strong>一級古蹟</strong>。<br>• 玉山是<strong>布農族</strong>世代生活的領域，著名的「八部合音（Pasibutbut）」以無伴奏的「嗚」聲合音祈求小米豐收。",
+        mascotText: "走上彎彎的八通關古道，每一步都踏在歷史故事上！聽聽看，森林裡傳來了布農族人神聖的八部合音！",
+        camPos: { x: 15, y: 11, z: 16 },
+        lookAt: { x: 3, y: 8, z: 0 }
+      },
+      {
+        id: 3,
+        title: "山頭縫製暖衣",
+        sub: "高山寒帶針葉林與圓柏",
+        elevation: "海拔 2,800 ~ 3,600 公尺",
+        sectionLabel: "第二段・山頭上的針葉林",
+        poem: "細細的針葉密密，\n在山頭上縫著暖衣。",
+        missionTitle: "🎯 任務四：用細密針葉為山頭縫製暖衣",
+        missionDesc: "高山寒風凜冽！請點擊「一針一線縫製暖衣」，收集玉山圓柏與冷杉的細密針葉，為山頭編織出溫暖的翠綠毛衣！",
+        knowledge: "<strong>💡 垂直生態與多音字：</strong><br>• 玉山高低落差約 <strong>3,600 公尺</strong>，山頭寒冷，植物演化出如針般的細葉以抗寒防風（如<strong>玉山圓柏</strong>）。<br>• 多音字：<strong>縫（ㄈㄥˊ）</strong>著暖衣（動詞）／ 接<strong>縫（ㄈㄥˋ）</strong>（名詞）。",
+        mascotText: "爬到海拔三千公尺以上，樹木變成細細密密的「針葉林」了！詩人把針葉想像成細針，正在替怕冷的山頭縫暖衣呢！",
+        camPos: { x: -10, y: 17, z: 12 },
+        lookAt: { x: 0, y: 14, z: 0 }
+      },
+      {
+        id: 4,
+        title: "天際第一道風",
+        sub: "峰頂氣象站與破曉雲海",
+        elevation: "海拔 3,845m 氣象站 / 3,952m 主峰",
+        sectionLabel: "第三段・峰頂的氣象站",
+        poem: "峰頂的氣象站，\n站得好高好高，\n領受太平洋第一道吹拂而來的風。",
+        missionTitle: "🎯 任務五：轉動風速計・領受太平洋第一道風",
+        missionDesc: "我們登上玉山峰頂了！點擊「啟動氣象雷達迎風」，轉動海拔 3,845 公尺氣象站的風速計，迎接破曉晨光與第一道太平洋季風！",
+        knowledge: "<strong>💡 語詞推論重點：</strong><br>• <strong>玉山北峰氣象站（海拔 3,845 公尺）</strong>是全臺灣海拔最高的建築物。<br>• <strong>「領」受</strong>的「領」是<strong>接受、領取</strong>的意思（與「失物招領、領取獎狀」相同）。",
+        mascotText: "哇！腳下全是翻騰的金色雲海！這座峰頂氣象站站得好高好高，第一個張開雙手「領受」太平洋吹來的風！",
+        camPos: { x: 6, y: 22, z: 11 },
+        lookAt: { x: 0, y: 18.5, z: 0 }
+      },
+      {
+        id: 5,
+        title: "風之滑翔與小溪翻唱",
+        sub: "3D 音遊跑酷＆動態圖像詩",
+        elevation: "海拔 3,952m 一路滑溜至山谷溪流",
+        sectionLabel: "第三段・風與小溪的大合唱",
+        poem: "頑皮的風，\n吹奏著多變的樂曲，\n從山頂\n一路\n滑溜而下。\n每一條溪，\n各自盤坐在綠意之間\n聆聽，翻唱\n玉山之歌。",
+        missionTitle: "🎯 任務六：化身頑皮的風・滑溜收集音符與小溪翻唱",
+        missionDesc: "使用鍵盤 A/D（或左右方向鍵、畫面按鈕）操控「頑皮的風」順著山勢滑溜而下，穿過金色音符環，讓盤坐的小溪一起翻唱《玉山之歌》！",
+        knowledge: "<strong>💡 圖像詩與擬人美學：</strong><br>• 「從山頂／一路／滑溜而下」透過<strong>拆行排版</strong>呈現視覺上的下坡滑溜感！<br>• <strong>「盤」坐</strong>指小溪蜿蜒曲折交錯在山林間（如盤腿而坐），先「聆聽」風聲，再用潺潺水聲「翻唱」玉山之歌！",
+        mascotText: "最刺激的時刻來了！化身「頑皮的風」從山頂滑溜而下，把多變的樂曲傳遞給每一條盤坐在綠意間的小溪吧！",
+        camPos: { x: 0, y: 16, z: 24 },
+        lookAt: { x: 0, y: 8, z: 0 }
+      }
+    ];
+
+    const CONCRETE_POEM_COLUMNS = [
+      { text: "太平洋的微笑，", offset: 0, tip: "【比喻＋擬人】把東亞島弧優美的弧線，比喻成太平洋臉上的一抹微笑。" },
+      { text: "淺淺一彎，", offset: 20, tip: "【視覺摹寫】描繪地圖上島弧彎彎的幾何曲線。" },
+      { text: "就靜止了。", offset: 40, tip: "【動態轉靜態】板塊擠壓隆起後，定格成永恆的島嶼與高山。" },
+      { text: "玉山，", offset: 15, tip: "【主角登場】東北亞第一高峰（海拔 3,952 公尺）。" },
+      { text: "站在笑意的最深處。", offset: 0, tip: "【空間定位】臺灣位於東亞島弧中心，玉山正是微笑曲線最彎、最深的地方。" },
+      { text: "大大的闊葉輕搖，", offset: 50, tip: "【山腳生態】低海拔副熱帶闊葉林（如臺灣檫樹、樟樹）。" },
+      { text: "在山腳下喊熱搧風；", offset: 65, tip: "【擬人＋比喻】把闊葉當成扇子，因為山腳炎熱而搖動搧風。" },
+      { text: "細細的針葉密密，", offset: 35, tip: "【山頭生態】高海拔寒帶針葉林（如玉山圓柏、鐵杉）。" },
+      { text: "在山頭上縫著暖衣。", offset: 20, tip: "【擬人＋比喻】把細長的針葉比喻為縫衣針，在寒冷山頂替高山縫製保暖外衣。" },
+      { text: "古道彎彎的牽起古今，", offset: 45, tip: "【人文景觀】八通關古道（國家一級古蹟），見證千年原住民與清代開山歷史。" },
+      { text: "訴說島嶼的故事。", offset: 60, tip: "【擬人修辭】古道像一位長者，向每位登山客娓娓道來臺灣的故事。" },
+      { text: "峰頂的氣象站，", offset: 10, tip: "【最高建築】玉山北峰氣象站（海拔 3,845 公尺）。" },
+      { text: "站得好高好高，", offset: 0, tip: "【疊字強調】凸顯聳立雲端的高度感。" },
+      { text: "領受太平洋第一道吹拂而來的風。", offset: 5, tip: "【擬人修辭】「領受」即接受，迎來海面吹向高山的第一縷清風。" },
+      { text: "頑皮的風，", offset: 10, tip: "【擬人修辭】賦予山風活潑調皮的孩童性格。" },
+      { text: "吹奏著多變的樂曲，", offset: 25, tip: "【聽覺摹寫】風吹過不同海拔的樹林與山谷，發出千變萬化的聲響。" },
+      { text: "從山頂", offset: 40, tip: "【圖像詩階梯 1】注意字數與高低位置，開始向下滑溜！" },
+      { text: "一路", offset: 65, tip: "【圖像詩階梯 2】短短兩字，加快視覺下墜的速度感！" },
+      { text: "滑溜而下。", offset: 90, tip: "【圖像詩階梯 3】一路俯衝到山谷溪流！" },
+      { text: "每一條溪，", offset: 70, tip: "【水文源頭】玉山孕育了濁水溪、高屏溪、曾文溪等重要河川。" },
+      { text: "各自盤坐在綠意之間", offset: 85, tip: "【擬人修辭】「盤坐」形容溪流蜿蜒屈曲交錯在翠綠山林間。" },
+      { text: "聆聽，翻唱", offset: 105, tip: "【擬人＋拆行趣味】小溪先靜靜聆聽風的樂曲，再用流水聲翻唱！" },
+      { text: "玉山之歌。", offset: 120, tip: "【主旨總結】自然生態、地理、人文與風水交織成的島嶼讚歌！" }
+    ];
+
+    const QUIZ_BANK = [
+      {
+        q: "1. 「太平洋的微笑／淺淺一彎」，請問詩中的「微笑、一彎」是指什麼地理位置？",
+        opts: ["(1) 東亞島弧的弧線", "(2) 八通關古道的彎路", "(3) 玉山圓柏彎曲的樹幹", "(4) 濁水溪的河道"],
+        ans: 0,
+        exp: "解析：千島群島→日本→琉球→臺灣→菲律賓群島構成的「東亞島弧」，在太平洋上猶如一抹淺淺微笑。"
+      },
+      {
+        q: "2. 「領」受太平洋第一道吹拂而來的風，「領」字的意思和下列哪一個語詞最相似？",
+        opts: ["(1) 我終於「領」會到母親的用心", "(2) 小美常常帶「領」大家討論", "(3) 弟弟上台「領」取獎狀，十分開心", "(4) 他是球隊的精神「領」袖"],
+        ans: 2,
+        exp: "解析：本課「領受」是「接受、收取」的意思，與「領取獎狀」、「失物招領」的「領」字義相同。"
+      },
+      {
+        q: "3. 「每一條溪，各自盤坐在綠意之間」，詩句中的「盤」字是什麼意思？",
+        opts: ["(1) 像菜盤一樣圓圓的", "(2) 指溪流蜿蜒屈曲相交，如同人盤腿而坐", "(3) 計算數量的單位（三盤水果）", "(4) 棋盤格狀的農田"],
+        ans: 1,
+        exp: "解析：「盤坐」原指雙腿交叉彎曲平坐，詩中運用擬人法，形容小溪蜿蜒穿過翠綠山谷的姿態。"
+      },
+      {
+        q: "4. 關於多音字「縫」的讀音，下列哪一個配對完全正確？",
+        opts: [
+          "(1) 「縫」著暖衣（ㄈㄥˋ）／ 接「縫」（ㄈㄥˊ）",
+          "(2) 「縫」著暖衣（ㄈㄥˊ）／ 看不到任何接「縫」（ㄈㄥˋ）",
+          "(3) 兩個都讀「ㄈㄥˊ」",
+          "(4) 兩個都讀「ㄈㄥˋ」"
+        ],
+        ans: 1,
+        exp: "解析：當動詞「以針線連綴」時讀二聲「ㄈㄥˊ」（如：縫暖衣、縫製）；當名詞「裂隙、接合處」時讀四聲「ㄈㄥˋ」（如：接縫、石縫）。"
+      },
+      {
+        q: "5. 大家來找碴！下列哪一組語詞「完全沒有錯別字」？",
+        opts: ["(1) 疑固 ／ 北蜂", "(2) 玩皮 ／ 吹弗", "(3) 搧風 ／ 聆聽", "(4) 領受 ／ 翻倡"],
+        ans: 2,
+        exp: "解析：正確寫法為：(1) 凝固／北峰、(2) 頑皮／吹拂、(3) 搧風／聆聽（全對！）、(4) 領受／翻唱。"
+      },
+      {
+        q: "6. 下列哪一個句子中，成語「一針見血」運用最正確？",
+        opts: [
+          "(1) 小英的發言總是東拉西扯沒有重點，真是「一針見血」。",
+          "(2) 被細細的針葉刺到手流血了，真是「一針見血」。",
+          "(3) 老師在討論會上的分析十分透澈、切中要點，真是「一針見血」。",
+          "(4) 哥哥做事拖拖拉拉，希望可以「一針見血」。"
+        ],
+        ans: 2,
+        exp: "解析：「一針見血」比喻言論或分析簡短透澈、切中要害。"
+      }
+    ];
+
+    /**************************************************************
+     * 2. 遊戲狀態管理與 Web Audio 音效合成器
+     **************************************************************/
+    let currentChapter = 0;
+    let chapterProgress = [0, 0, 0, 0, 0, 0];
+    let totalScore = 0;
+    let playerRole = "wind"; // 'wind' (頑皮的風) or 'explorer' (小小特派員)
+    let forestTemp = 35; // Chapter 2 broadleaf cooling mechanic
+    let activeSingers = new Set(); // Chapter 3 Pasibutbut
+    let sewCount = 0; // Chapter 4 needle sewing
+    let windGustCount = 0; // Chapter 5 weather station
+    let polaroidPhotos = [];
+    let gliderX = 0; // Chapter 6 parkour lateral position
+
+    // Web Audio API Synthesizer
+    let audioCtx = null;
+    let pasibutbutOscillators = {};
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+    }
+
+    function playChime(freq = 523.25, duration = 0.35, type = "sine") {
+      initAudio();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.25, audioCtx.currentTime + duration);
+
+      gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function playWindWhoosh() {
+      initAudio();
+      const bufferSize = audioCtx.sampleRate * 0.45;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(400, audioCtx.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(1100, audioCtx.currentTime + 0.25);
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      noise.start();
+    }
+
+    function playPasibutbutVoice(singerIndex) {
+      initAudio();
+      // Harmonics inspired by Bunun polyphonic overtone singing
+      const baseFreqs = [196.0, 220.0, 246.94, 261.63, 293.66, 329.63, 349.23, 392.0];
+      const freq = baseFreqs[singerIndex % baseFreqs.length];
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      // Slight upward pitch bend characteristic of Pasibutbut
+      osc.frequency.linearRampToValueAtTime(freq * 1.04, audioCtx.currentTime + 1.2);
+
+      gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 0.2);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.4);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 1.4);
+    }
+
+    /**************************************************************
+     * 3. THREE.JS 3D 玉山世界場景建構
+     **************************************************************/
+    const container = document.getElementById("canvas-container");
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f2027);
+    scene.fog = new THREE.FogExp2(0x163240, 0.012);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
+    camera.position.set(0, 26, 46);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xd8f3dc, 0.72);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffe599, 1.25);
+    sunLight.position.set(30, 45, 25);
+    sunLight.castShadow = true;
+    scene.add(sunLight);
+
+    const rimLight = new THREE.PointLight(0x2ec4b6, 0.85, 80);
+    rimLight.position.set(-20, 20, -15);
+    scene.add(rimLight);
+
+    // World Groups
+    const worldGroup = new THREE.Group();
+    scene.add(worldGroup);
+
+    const islandArcGroup = new THREE.Group(); // Ch 1: East Asian Island Arc
+    const broadleafGroup = new THREE.Group(); // Ch 2: Broadleaf Forest
+    const trailGroup = new THREE.Group();     // Ch 3: Batongguan Trail & Singers
+    const coniferGroup = new THREE.Group();   // Ch 4: Conifer & Warm Coat
+    const summitGroup = new THREE.Group();    // Ch 5: Weather Station & Sea of Clouds
+    const riverParkourGroup = new THREE.Group(); // Ch 6: Sliding Wind & Singing Streams
+
+    worldGroup.add(islandArcGroup, broadleafGroup, trailGroup, coniferGroup, summitGroup, riverParkourGroup);
+
+    // --- Build Low-Poly Yushan Mountain Peak & Ocean Base ---
+    const oceanGeo = new THREE.CylinderGeometry(55, 55, 2, 48);
+    const oceanMat = new THREE.MeshPhongMaterial({
+      color: 0x006d77,
+      shininess: 90,
+      flatShading: true
+    });
+    const oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
+    oceanMesh.position.y = -1;
+    worldGroup.add(oceanMesh);
+
+    // Multi-tiered Stylized Yushan Mountain
+    function createMountainTier(radiusTop, radiusBottom, height, yPos, colorHex) {
+      const geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, 9, 3);
+      // Perturb vertices for organic low-poly rock look
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const vx = pos.getX(i);
+        const vy = pos.getY(i);
+        const vz = pos.getZ(i);
+        const angle = Math.atan2(vz, vx);
+        const noise = Math.sin(angle * 4 + vy) * 0.9 + Math.cos(angle * 3) * 0.6;
+        if (Math.abs(vy) < height / 2 - 0.1) {
+          pos.setX(i, vx + noise);
+          pos.setZ(i, vz + noise);
+        }
+      }
+      geo.computeVertexNormals();
+      const mat = new THREE.MeshLambertMaterial({ color: colorHex, flatShading: true });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.y = yPos;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      return mesh;
+    }
+
+    const baseTier = createMountainTier(13, 20, 6, 3, 0x2d6a4f);    // Subtropical foot
+    const midTier = createMountainTier(8.5, 13.5, 6, 9, 0x40916c);  // Temperate mid-mountain
+    const highTier = createMountainTier(4.2, 8.8, 5, 14.5, 0x52796f); // Alpine conifer zone
+    const peakTier = createMountainTier(0.8, 4.4, 3.6, 18.6, 0x6c757d); // Yushan Rocky Main Peak (3952m)
+    worldGroup.add(baseTier, midTier, highTier, peakTier);
+
+    // Chapter 4 Warm Coat Overlay Mesh (Initially transparent, woven during Ch 4)
+    const warmCoatGeo = new THREE.CylinderGeometry(3.8, 9.1, 5.2, 16);
+    const warmCoatMat = new THREE.MeshPhongMaterial({
+      color: 0x52b788,
+      transparent: true,
+      opacity: 0.0,
+      wireframe: false,
+      shininess: 40,
+      flatShading: true
+    });
+    const warmCoatMesh = new THREE.Mesh(warmCoatGeo, warmCoatMat);
+    warmCoatMesh.position.y = 14.5;
+    coniferGroup.add(warmCoatMesh);
+
+    // --- Chapter 1: East Asian Island Arc (太平洋的微笑弧線) ---
+    const arcCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(28, 0.6, -24),  // 千島群島
+      new THREE.Vector3(22, 0.6, -8),   // 日本
+      new THREE.Vector3(12, 0.6, 8),    // 琉球
+      new THREE.Vector3(0, 1.2, 16),    // 臺灣（微笑最深處）
+      new THREE.Vector3(-14, 0.6, 25)   // 菲律賓
+    ]);
+    const arcTubeGeo = new THREE.TubeGeometry(arcCurve, 48, 0.45, 8, false);
+    const arcTubeMat = new THREE.MeshBasicMaterial({ color: 0xffd166 });
+    const arcTubeMesh = new THREE.Mesh(arcTubeGeo, arcTubeMat);
+    islandArcGroup.add(arcTubeMesh);
+
+    const arcNodes = [];
+    const arcNames = ["千島群島", "日本群島", "琉球群島", "臺灣・玉山（笑意最深處）"];
+    [0.1, 0.38, 0.65, 0.82].forEach((t, idx) => {
+      const pt = arcCurve.getPoint(t);
+      const sphereGeo = new THREE.SphereGeometry(idx === 3 ? 1.5 : 1.0, 16, 16);
+      const sphereMat = new THREE.MeshPhongMaterial({
+        color: idx === 3 ? 0xffbe0b : 0x80ffdb,
+        emissive: idx === 3 ? 0xf4a261 : 0x1b6b52,
+        emissiveIntensity: 0.6
+      });
+      const node = new THREE.Mesh(sphereGeo, sphereMat);
+      node.position.copy(pt);
+      node.userData = { type: "arcNode", index: idx, name: arcNames[idx] };
+      islandArcGroup.add(node);
+      arcNodes.push(node);
+    });
+
+    // --- Chapter 2: Subtropical Broadleaf Trees (山腳大闊葉樹) ---
+    const broadleafLeaves = [];
+    for (let i = 0; i < 9; i++) {
+      const angle = (i / 9) * Math.PI * 1.2 + 1.8;
+      const dist = 14 + (i % 2) * 2.5;
+      const tx = Math.cos(angle) * dist;
+      const tz = Math.sin(angle) * dist;
+
+      const treeGroup = new THREE.Group();
+      treeGroup.position.set(tx, 3.2, tz);
+
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.25, 0.4, 2.2, 6),
+        new THREE.MeshLambertMaterial({ color: 0x6f4e37 })
+      );
+      treeGroup.add(trunk);
+
+      // Fan-shaped giant broadleaf crown
+      const leafGeo = new THREE.DodecahedronGeometry(1.75, 0);
+      leafGeo.scale(1.35, 0.65, 1.2);
+      const leafMat = new THREE.MeshLambertMaterial({ color: 0x74c69d, flatShading: true });
+      const leafCrown = new THREE.Mesh(leafGeo, leafMat);
+      leafCrown.position.y = 1.6;
+      leafCrown.userData = { type: "broadleaf", baseRotZ: 0 };
+      treeGroup.add(leafCrown);
+      broadleafLeaves.push(leafCrown);
+
+      broadleafGroup.add(treeGroup);
+    }
+
+    // --- Chapter 3: Batongguan Historic Trail & 8 Bunun Singers ---
+    const trailPoints = [];
+    for (let i = 0; i <= 20; i++) {
+      const t = i / 20;
+      const angle = t * Math.PI * 1.4 - 0.5;
+      const radius = 15.5 - t * 8.5;
+      const height = 2.5 + t * 10.5;
+      trailPoints.push(new THREE.Vector3(Math.cos(angle) * radius, height, Math.sin(angle) * radius));
+    }
+    const trailCurve = new THREE.CatmullRomCurve3(trailPoints);
+    const trailGeo = new THREE.TubeGeometry(trailCurve, 50, 0.28, 6, false);
+    const trailMat = new THREE.MeshPhongMaterial({
+      color: 0xf4a261,
+      emissive: 0xe76f51,
+      emissiveIntensity: 0.35
+    });
+    const trailMesh = new THREE.Mesh(trailGeo, trailMat);
+    trailGroup.add(trailMesh);
+
+    // 8 Bunun Singers Circle on a mountain plateau
+    const singersGroup = new THREE.Group();
+    singersGroup.position.set(7.5, 8.2, 7.5);
+    const singerMeshes = [];
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const sGroup = new THREE.Group();
+      sGroup.position.set(Math.cos(a) * 2.1, 0, Math.sin(a) * 2.1);
+
+      const body = new THREE.Mesh(
+        new THREE.ConeGeometry(0.42, 1.2, 8),
+        new THREE.MeshLambertMaterial({ color: i % 2 === 0 ? 0xe63946 : 0x1d3557 })
+      );
+      body.position.y = 0.6;
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.28, 10, 10),
+        new THREE.MeshLambertMaterial({ color: 0xffcba4 })
+      );
+      head.position.y = 1.38;
+      sGroup.add(body, head);
+      singersGroup.add(sGroup);
+      singerMeshes.push(sGroup);
+    }
+    trailGroup.add(singersGroup);
+
+    // --- Chapter 4: Alpine Conifer Trees (山頭針葉林與玉山圓柏) ---
+    const coniferTrees = [];
+    for (let i = 0; i < 14; i++) {
+      const angle = (i / 14) * Math.PI * 2;
+      const r = 5.5 + (i % 3) * 1.5;
+      const cy = 12.8 + (i % 3) * 1.2;
+      const cTree = new THREE.Group();
+      cTree.position.set(Math.cos(angle) * r, cy, Math.sin(angle) * r);
+
+      for (let layer = 0; layer < 3; layer++) {
+        const cone = new THREE.Mesh(
+          new THREE.ConeGeometry(1.1 - layer * 0.25, 1.5, 6),
+          new THREE.MeshLambertMaterial({ color: 0x1b4332, flatShading: true })
+        );
+        cone.position.y = 0.8 + layer * 0.85;
+        cTree.add(cone);
+      }
+      coniferGroup.add(cTree);
+      coniferTrees.push(cTree);
+    }
+
+    // --- Chapter 5: Summit Weather Station (海拔3845m 玉山氣象站) & Sea of Clouds ---
+    const stationGroup = new THREE.Group();
+    stationGroup.position.set(0.6, 19.8, 0.4);
+
+    const stationBuilding = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 1.1, 1.2),
+      new THREE.MeshLambertMaterial({ color: 0xf8f9fa })
+    );
+    const stationRoof = new THREE.Mesh(
+      new THREE.BoxGeometry(1.65, 0.2, 1.35),
+      new THREE.MeshLambertMaterial({ color: 0xe63946 })
+    );
+    stationRoof.position.y = 0.65;
+
+    // Spinning Anemometer Mast (風速計)
+    const mast = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 1.8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffd166 })
+    );
+    mast.position.set(0, 1.4, 0);
+
+    const anemometerBlades = new THREE.Group();
+    anemometerBlades.position.set(0, 2.2, 0);
+    for (let b = 0; b < 3; b++) {
+      const arm = new THREE.Mesh(
+        new THREE.BoxGeometry(0.9, 0.08, 0.08),
+        new THREE.MeshBasicMaterial({ color: 0xffbe0b })
+      );
+      arm.rotation.y = (b * Math.PI * 2) / 3;
+      anemometerBlades.add(arm);
+    }
+
+    stationGroup.add(stationBuilding, stationRoof, mast, anemometerBlades);
+    summitGroup.add(stationGroup);
+
+    // 3D Rolling Sea of Clouds (雲海)
+    const clouds = [];
+    for (let c = 0; c < 18; c++) {
+      const cGeo = new THREE.DodecahedronGeometry(2.2 + (c % 3) * 0.8, 1);
+      cGeo.scale(1.6, 0.45, 1.2);
+      const cMat = new THREE.MeshLambertMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.72,
+        flatShading: true
+      });
+      const cMesh = new THREE.Mesh(cGeo, cMat);
+      const a = (c / 18) * Math.PI * 2;
+      const dist = 11 + (c % 4) * 3.5;
+      cMesh.position.set(Math.cos(a) * dist, 15.8 + (c % 2) * 0.8, Math.sin(a) * dist);
+      cMesh.userData = { angle: a, dist: dist, speed: 0.002 + (c % 3) * 0.001 };
+      summitGroup.add(cMesh);
+      clouds.push(cMesh);
+    }
+
+    // --- Chapter 6: Wind Glider & Singing Streams (風之滑道與盤坐的小溪) ---
+    const streamCurves = [];
+    const streamNotes = [];
+    for (let s = 0; s < 3; s++) {
+      const offsetAngle = (s - 1) * 0.38;
+      const pts = [];
+      for (let step = 0; step <= 12; step++) {
+        const ratio = step / 12;
+        const y = 18.5 - ratio * 17.5;
+        const z = 2 + ratio * 19;
+        const x = Math.sin(ratio * Math.PI * 3 + s) * 2.5 + offsetAngle * (z * 0.6);
+        pts.push(new THREE.Vector3(x, y, z));
+      }
+      const sCurve = new THREE.CatmullRomCurve3(pts);
+      streamCurves.push(sCurve);
+      const sGeo = new THREE.TubeGeometry(sCurve, 40, 0.32, 6, false);
+      const sMat = new THREE.MeshPhongMaterial({
+        color: 0x48cae4,
+        emissive: 0x0077b6,
+        emissiveIntensity: 0.4,
+        shininess: 100
+      });
+      const sMesh = new THREE.Mesh(sGeo, sMat);
+      riverParkourGroup.add(sMesh);
+    }
+
+    // Collectible Musical Note Rings along the downhill path
+    for (let n = 0; n < 8; n++) {
+      const t = (n + 1) / 9;
+      const pos = streamCurves[1].getPoint(t);
+      const ringGeo = new THREE.TorusGeometry(0.95, 0.14, 8, 20);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd166 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.copy(pos);
+      ring.position.y += 0.7;
+      ring.userData = { index: n, collected: false };
+      riverParkourGroup.add(ring);
+      streamNotes.push(ring);
+    }
+
+    // --- Player Avatar: Wind Spirit (頑皮的風) / Yushan Explorer (小小玉山特派員) ---
+    const playerAvatar = new THREE.Group();
+    // Wind Spirit Core + Ribbon Rings
+    const windCore = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.85, 1),
+      new THREE.MeshPhongMaterial({ color: 0x90e0ef, emissive: 0x00b4d8, emissiveIntensity: 0.6, flatShading: true })
+    );
+    const windHalo = new THREE.Mesh(
+      new THREE.TorusGeometry(1.3, 0.1, 8, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffd166 })
+    );
+    windHalo.rotation.x = Math.PI / 2;
+    playerAvatar.add(windCore, windHalo);
+    playerAvatar.position.set(0, 21, 3);
+    scene.add(playerAvatar);
+
+    /**************************************************************
+     * 4. 滑鼠/觸控視角互動與 Raycaster 點擊偵測
+     **************************************************************/
+    let isDragging = false;
+    let prevMouse = { x: 0, y: 0 };
+    let cameraOrbitAngle = 0;
+    let cameraZoomOffset = 0;
+    const targetCamPos = new THREE.Vector3(0, 26, 46);
+    const targetLookAt = new THREE.Vector3(0, 4, 0);
+    const currentLookAt = new THREE.Vector3(0, 4, 0);
+
+    const raycaster = new THREE.Raycaster();
+    const mouseVec = new THREE.Vector2();
+
+    renderer.domElement.addEventListener("pointerdown", (e) => {
+      isDragging = true;
+      prevMouse = { x: e.clientX, y: e.clientY };
+
+      // Check 3D object click
+      mouseVec.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouseVec, camera);
+      const intersects = raycaster.intersectObjects(worldGroup.children, true);
+      if (intersects.length > 0) {
+        const hit = intersects[0].object;
+        if (currentChapter === 0 && hit.userData.type === "arcNode") {
+          handleArcNodeClick(hit.userData.index, hit.userData.name);
+        } else if (currentChapter === 1 && hit.userData.type === "broadleaf") {
+          fanBroadleafAction();
+        }
+      }
+    });
+
+    window.addEventListener("pointermove", (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - prevMouse.x;
+      prevMouse = { x: e.clientX, y: e.clientY };
+      cameraOrbitAngle -= dx * 0.007;
+    });
+
+    window.addEventListener("pointerup", () => {
+      isDragging = false;
+    });
+
+    window.addEventListener("wheel", (e) => {
+      cameraZoomOffset = Math.max(-12, Math.min(20, cameraZoomOffset + e.deltaY * 0.015));
+    });
+
+    // Keyboard controls for Chapter 6 Glider
+    window.addEventListener("keydown", (e) => {
+      if (currentChapter === 5) {
+        if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
+          steerGlider(-1);
+        } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
+          steerGlider(1);
+        }
+      }
+    });
+
+    /**************************************************************
+     * 5. 六大關卡互動邏輯與 UI 更新
+     **************************************************************/
+    function renderChapterRail() {
+      const rail = document.getElementById("chapter-rail");
+      rail.innerHTML = "";
+      CHAPTERS.forEach((ch, idx) => {
+        const pill = document.createElement("div");
+        pill.className = "chapter-pill" + (idx === currentChapter ? " active" : "") + (chapterProgress[idx] >= 100 ? " completed" : "");
+        pill.onclick = () => switchChapter(idx);
+        pill.innerHTML = `
+          <div class="ch-num">${chapterProgress[idx] >= 100 ? "✓" : idx + 1}</div>
+          <div class="ch-info">
+            <div class="ch-title">${ch.title}</div>
+            <div class="ch-sub">${ch.sub}</div>
+          </div>
+        `;
+        rail.appendChild(pill);
+      });
+    }
+
+    function switchChapter(idx) {
+      currentChapter = idx;
+      cameraOrbitAngle = 0;
+      cameraZoomOffset = 0;
+      const ch = CHAPTERS[idx];
+
+      targetCamPos.set(ch.camPos.x, ch.camPos.y, ch.camPos.z);
+      targetLookAt.set(ch.lookAt.x, ch.lookAt.y, ch.lookAt.z);
+
+      document.getElementById("altimeter").textContent = ch.elevation + "｜" + ch.title;
+      document.getElementById("poem-section-label").textContent = ch.sectionLabel;
+      document.getElementById("poem-display").textContent = ch.poem;
+      document.getElementById("mission-title").textContent = ch.missionTitle;
+      document.getElementById("mission-desc").textContent = ch.missionDesc;
+      document.getElementById("knowledge-card").innerHTML = ch.knowledge;
+      document.getElementById("mascot-dialogue").textContent = ch.mascotText;
+
+      // Dynamic Sky & Lighting per chapter
+      const skyColors = [0x0b2545, 0x1b4332, 0x2b2d42, 0x1d3557, 0x3d405b, 0x0f3460];
+      scene.background = new THREE.Color(skyColors[idx]);
+      scene.fog.color = new THREE.Color(skyColors[idx]);
+
+      updateMissionProgressUI();
+      renderChapterControls();
+      renderChapterRail();
+      playChime(440 + idx * 55, 0.25);
+    }
+
+    function updateMissionProgressUI() {
+      const pct = Math.min(100, Math.round(chapterProgress[currentChapter]));
+      document.getElementById("mission-progress-text").textContent = pct + "%";
+      document.getElementById("mission-progress-bar").style.width = pct + "%";
+
+      totalScore = chapterProgress.reduce((acc, v) => acc + Math.min(100, Math.round(v)), 0);
+      document.getElementById("score-badge").textContent = `🎵 樂音能量：${totalScore} / 600`;
+    }
+
+    function addProgress(chIdx, amount, toastMsg) {
+      const before = chapterProgress[chIdx];
+      chapterProgress[chIdx] = Math.min(100, chapterProgress[chIdx] + amount);
+      updateMissionProgressUI();
+      renderChapterRail();
+      if (toastMsg) showToast(toastMsg);
+      if (before < 100 && chapterProgress[chIdx] >= 100) {
+        playChime(783.99, 0.5, "triangle");
+        showToast(`🎉 恭喜完成【${CHAPTERS[chIdx].title}】！可前往下一關或拍照留念！`);
+      }
+    }
+
+    function renderChapterControls() {
+      const box = document.getElementById("chapter-controls");
+      box.innerHTML = "";
+
+      if (currentChapter === 0) {
+        // Chapter 1: Island Arc Navigation
+        box.innerHTML = `
+          <button class="action-btn" onclick="triggerIslandArcStep()">
+            🌊 順著東亞島弧微笑曲線航行 (+25%)
+          </button>
+        `;
+      } else if (currentChapter === 1) {
+        // Chapter 2: Broadleaf Fanning
+        box.innerHTML = `
+          <div style="font-weight:800; color:#ffd166; text-align:center;">
+            🌡️ 目前山腳森林溫度：<span id="temp-val">${forestTemp}</span>°C（目標：25°C）
+          </div>
+          <button class="action-btn" onclick="fanBroadleafAction()">
+            🌿 搖動大大闊葉搧風降溫 (-2°C)
+          </button>
+        `;
+      } else if (currentChapter === 2) {
+        // Chapter 3: Batongguan Trail & 8 Singers
+        let singersHtml = `<div class="bunun-grid">`;
+        for (let i = 0; i < 8; i++) {
+          const isSung = activeSingers.has(i) ? "singing" : "";
+          singersHtml += `<button class="singer-btn ${isSung}" onclick="triggerBununSinger(${i})">🎵 族人 ${i + 1}</button>`;
+        }
+        singersHtml += `</div>`;
+        box.innerHTML = `
+          <div style="font-size:0.8rem; color:#ffd166;">點擊 8 位布農族歌者，合奏「八部合音」牽起古道古今：</div>
+          ${singersHtml}
+        `;
+      } else if (currentChapter === 3) {
+        // Chapter 4: Needleleaf Sewing Warm Coat
+        box.innerHTML = `
+          <button class="action-btn" onclick="sewMountainCoatAction()">
+            🪡 用細密針葉為山頭縫製暖衣 (${sewCount}/5 針)
+          </button>
+        `;
+      } else if (currentChapter === 4) {
+        // Chapter 5: Weather Station First Wind
+        box.innerHTML = `
+          <button class="action-btn" onclick="catchPacificWindAction()">
+            📡 啟動峰頂氣象站・領受第一道風 (${windGustCount}/3 道風)
+          </button>
+        `;
+      } else if (currentChapter === 5) {
+        // Chapter 6: Downhill Parkour & Singing Streams
+        box.innerHTML = `
+          <div style="display:flex; gap:8px;">
+            <button class="action-btn" style="flex:1; background:#2a9d8f;" onclick="steerGlider(-1)">⬅️ 向左滑溜</button>
+            <button class="action-btn" style="flex:1; background:#2a9d8f;" onclick="steerGlider(1)">➡️ 向右滑溜</button>
+          </div>
+          <button class="action-btn" onclick="triggerStreamChorus()">
+            🎶 讓盤坐的小溪翻唱《玉山之歌》大合唱！
+          </button>
+        `;
+      }
+    }
+
+    // --- Chapter Interactive Actions ---
+    let arcStep = 0;
+    function triggerIslandArcStep() {
+      const idx = arcStep % 4;
+      arcStep++;
+      handleArcNodeClick(idx, arcNames[idx]);
+    }
+
+    function handleArcNodeClick(idx, name) {
+      playChime(480 + idx * 80, 0.3);
+      const node = arcNodes[idx];
+      node.scale.set(1.5, 1.5, 1.5);
+      setTimeout(() => node.scale.set(1, 1, 1), 400);
+      playerAvatar.position.copy(node.position).add(new THREE.Vector3(0, 2.2, 0));
+      addProgress(0, 25, `🌏 抵達東亞島弧航點：${name}`);
+    }
+
+    function fanBroadleafAction() {
+      playWindWhoosh();
+      if (forestTemp > 25) {
+        forestTemp = Math.max(25, forestTemp - 2);
+      }
+      const tempSpan = document.getElementById("temp-val");
+      if (tempSpan) tempSpan.textContent = forestTemp;
+
+      // Animate broadleaf crowns
+      broadleafLeaves.forEach((leaf) => {
+        leaf.rotation.z = (Math.random() - 0.5) * 0.7;
+        leaf.scale.set(1.2, 1.2, 1.2);
+        setTimeout(() => {
+          leaf.rotation.z = 0;
+          leaf.scale.set(1, 1, 1);
+        }, 350);
+      });
+
+      addProgress(1, 20, `🌿 大大闊葉輕搖搧風！森林溫度降至 ${forestTemp}°C`);
+    }
+
+    function triggerBununSinger(idx) {
+      activeSingers.add(idx);
+      playPasibutbutVoice(idx);
+      // Bounce singer 3D mesh
+      const sMesh = singerMeshes[idx];
+      if (sMesh) {
+        sMesh.position.y = 0.8;
+        setTimeout(() => (sMesh.position.y = 0), 500);
+      }
+      renderChapterControls();
+      addProgress(2, 12.5, `🎵 布農族八部合音第 ${idx + 1} 聲部共鳴！古道牽起古今記憶`);
+    }
+
+    function sewMountainCoatAction() {
+      sewCount = Math.min(5, sewCount + 1);
+      playChime(587.33 + sewCount * 45, 0.3, "triangle");
+      warmCoatMat.opacity = (sewCount / 5) * 0.78;
+      renderChapterControls();
+      addProgress(3, 20, `🪡 細細針葉密密縫！山頭綠色暖衣完成度 ${sewCount * 20}%`);
+    }
+
+    let anemometerBoost = 0;
+    function catchPacificWindAction() {
+      windGustCount = Math.min(3, windGustCount + 1);
+      anemometerBoost = 0.45;
+      playWindWhoosh();
+      playChime(659.25 + windGustCount * 60, 0.4);
+      renderChapterControls();
+      addProgress(4, 34, `📡 海拔 3,845m 氣象站成功領受太平洋第 ${windGustCount} 道風！`);
+    }
+
+    let glideProgress = 0;
+    function steerGlider(dir) {
+      gliderX = Math.max(-1, Math.min(1, gliderX + dir));
+      playWindWhoosh();
+      addProgress(5, 15, `🍃 頑皮的風在山谷間靈活滑溜！`);
+    }
+
+    function triggerStreamChorus() {
+      const notes = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
+      notes.forEach((f, i) => {
+        setTimeout(() => playChime(f, 0.35, "sine"), i * 140);
+      });
+      addProgress(5, 35, `🎶 每一條溪盤坐在綠意之間，聆聽並翻唱《玉山之歌》！`);
+    }
+
+    function togglePlayerRole() {
+      playerRole = playerRole === "wind" ? "explorer" : "wind";
+      const btn = document.getElementById("btn-role-toggle");
+      if (playerRole === "wind") {
+        btn.textContent = "🍃 視角：頑皮的風";
+        windCore.material.color.setHex(0x90e0ef);
+        showToast("🍃 切換為「頑皮的風」自由飛行視角！");
+      } else {
+        btn.textContent = "🥾 視角：小小玉山特派員";
+        windCore.material.color.setHex(0xffbe0b);
+        showToast("🥾 切換為「小小玉山特派員」探險視角！");
+      }
+    }
+
+    /**************************************************************
+     * 6. 拍立得相機、課文朗讀 (TTS)、圖像詩與思考地圖匯出
+     **************************************************************/
+    function takePolaroidPhoto() {
+      const flash = document.getElementById("camera-flash");
+      flash.style.opacity = "0.9";
+      setTimeout(() => (flash.style.opacity = "0"), 300);
+      playChime(880, 0.15);
+
+      renderer.render(scene, camera);
+      const dataUrl = renderer.domElement.toDataURL("image/png");
+      const label = CHAPTERS[currentChapter].title;
+      if (polaroidPhotos.length >= 4) {
+        polaroidPhotos.shift();
+      }
+      polaroidPhotos.push({ url: dataUrl, caption: label });
+      document.getElementById("photo-count").textContent = polaroidPhotos.length;
+      renderPhotoStrip();
+      showToast(`📸 已拍下【${label}】3D 風景照！存入課文思考地圖相簿！`);
+    }
+
+    function renderPhotoStrip() {
+      const strip = document.getElementById("photo-strip");
+      strip.innerHTML = "";
+      for (let i = 0; i < 4; i++) {
+        const slot = document.createElement("div");
+        slot.className = "photo-slot";
+        if (polaroidPhotos[i]) {
+          slot.innerHTML = `<img src="${polaroidPhotos[i].url}" alt="${polaroidPhotos[i].caption}" />`;
+        } else {
+          slot.textContent = `尚未拍攝 ${i + 1}`;
+        }
+        strip.appendChild(slot);
+      }
+    }
+
+    function speakText(text) {
+      if (!("speechSynthesis" in window)) {
+        showToast("您的瀏覽器不支援語音合成朗讀功能");
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "zh-TW";
+      utter.rate = 0.92;
+      utter.pitch = 1.05;
+      window.speechSynthesis.speak(utter);
+    }
+
+    function speakCurrentPoem() {
+      speakText(CHAPTERS[currentChapter].poem);
+    }
+
+    function speakFullPoem() {
+      const fullText = "第四課，玉山之歌，作者：路寒袖。" + CHAPTERS.map((c) => c.poem).join("。");
+      speakText(fullText);
+    }
+
+    function stopSpeech() {
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    }
+
+    // Build Concrete Poem Modal Stage
+    function initConcretePoemStage() {
+      const stage = document.getElementById("concrete-poem-stage");
+      stage.innerHTML = "";
+      CONCRETE_POEM_COLUMNS.forEach((col) => {
+        const div = document.createElement("div");
+        div.className = "vertical-col";
+        div.style.marginTop = col.offset + "px";
+        div.textContent = col.text;
+        div.onclick = () => {
+          speakText(col.text);
+          document.getElementById("poem-analysis-tip").innerHTML = `✨ <strong>「${col.text}」</strong><br>${col.tip}`;
+        };
+        stage.appendChild(div);
+      });
+    }
+
+    // Build Quiz Modal
+    function initQuizModal() {
+      const qContainer = document.getElementById("quiz-container");
+      qContainer.innerHTML = "";
+      QUIZ_BANK.forEach((item, qIdx) => {
+        const block = document.createElement("div");
+        block.style.marginBottom = "18px";
+        block.style.padding = "14px";
+        block.style.background = "#fff";
+        block.style.borderRadius = "14px";
+        block.style.border = "1px solid #dee2e6";
+
+        const title = document.createElement("div");
+        title.style.fontWeight = "800";
+        title.style.marginBottom = "10px";
+        title.style.color = "#1b4332";
+        title.textContent = item.q;
+        block.appendChild(title);
+
+        const expDiv = document.createElement("div");
+        expDiv.style.display = "none";
+        expDiv.style.marginTop = "8px";
+        expDiv.style.padding = "8px 12px";
+        expDiv.style.borderRadius = "8px";
+        expDiv.style.background = "#e9f5f2";
+        expDiv.style.fontSize = "0.86rem";
+        expDiv.style.fontWeight = "600";
+        expDiv.textContent = item.exp;
+
+        item.opts.forEach((optText, oIdx) => {
+          const btn = document.createElement("button");
+          btn.className = "quiz-option";
+          btn.textContent = optText;
+          btn.onclick = () => {
+            if (oIdx === item.ans) {
+              btn.classList.add("correct");
+              playChime(783.99, 0.3);
+            } else {
+              btn.classList.add("wrong");
+              playChime(220, 0.3, "sawtooth");
+            }
+            expDiv.style.display = "block";
+          };
+          block.appendChild(btn);
+        });
+
+        block.appendChild(expDiv);
+        qContainer.appendChild(block);
+      });
+    }
+
+    // Export Thinking Map Worksheet to PNG Canvas
+    function exportWorksheetImage() {
+      const c = document.createElement("canvas");
+      c.width = 1200;
+      c.height = 860;
+      const ctx = c.getContext("2d");
+
+      // Background
+      const grad = ctx.createLinearGradient(0, 0, 0, 860);
+      grad.addColorStop(0, "#e9f5f2");
+      grad.addColorStop(1, "#d8f3dc");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1200, 860);
+
+      // Header Border
+      ctx.fillStyle = "#1b6b52";
+      ctx.fillRect(0, 0, 1200, 85);
+
+      ctx.fillStyle = "#ffd166";
+      ctx.font = "bold 30px Microsoft JhengHei, sans-serif";
+      ctx.fillText("【四上第四課・玉山之歌】3D 課文思考地圖（圖像化＋擬人對話）", 32, 54);
+
+      const cls = document.getElementById("ws-class").value || "404";
+      const seat = document.getElementById("ws-seat").value || "__";
+      const name = document.getElementById("ws-name").value || "小小特派員";
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 20px Microsoft JhengHei, sans-serif";
+      ctx.fillText(`${cls} 班 (${seat}) 號 姓名：${name}`, 850, 52);
+
+      // Draw 6 Personified Cards
+      const cards = [
+        { title: "🌏 1. 太平洋的微笑（東亞島弧）", val: document.getElementById("ws-q1").value },
+        { title: "🌿 2. 山腳闊葉（喊熱搧風）", val: document.getElementById("ws-q2").value },
+        { title: "🌲 3. 山頭針葉（縫製暖衣）", val: document.getElementById("ws-q3").value },
+        { title: "🥾 4. 八通關古道（牽起古今）", val: document.getElementById("ws-q4").value },
+        { title: "📡 5. 峰頂氣象站（領受第一道風）", val: document.getElementById("ws-q5").value },
+        { title: "🍃 6. 頑皮的風＆盤坐的小溪", val: document.getElementById("ws-q6").value }
+      ];
+
+      cards.forEach((item, idx) => {
+        const col = idx % 2;
+        const row = Math.floor(idx / 2);
+        const x = 36 + col * 570;
+        const y = 110 + row * 155;
+
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#2a9d8f";
+        ctx.lineWidth = 3;
+        ctx.fillRect(x, y, 545, 135);
+        ctx.strokeRect(x, y, 545, 135);
+
+        ctx.fillStyle = "#1b6b52";
+        ctx.font = "bold 20px Microsoft JhengHei, sans-serif";
+        ctx.fillText(item.title, x + 16, y + 34);
+
+        ctx.fillStyle = "#1d3557";
+        ctx.font = "17px Microsoft JhengHei, sans-serif";
+        const text = item.val;
+        ctx.fillText(text.slice(0, 28), x + 16, y + 72);
+        if (text.length > 28) {
+          ctx.fillText(text.slice(28, 56), x + 16, y + 102);
+        }
+      });
+
+      // Footer
+      ctx.fillStyle = "#1b4332";
+      ctx.font = "bold 20px Microsoft JhengHei, sans-serif";
+      ctx.fillText(`🎵 玉山之歌 3D 探索總能量：${totalScore} / 600 分   ｜   家長愛的鼓勵：___________________________`, 36, 820);
+
+      const link = document.createElement("a");
+      link.download = `L4玉山之歌_思考地圖_${name}.png`;
+      link.href = c.toDataURL("image/png");
+      link.click();
+      showToast("📥 已成功下載「課文思考地圖」圖檔！");
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.add("open");
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove("open");
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove("show"), 3200);
+    }
+
+    /**************************************************************
+     * 7. 主動畫迴圈 (Animation Loop)
+     **************************************************************/
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const elapsed = clock.getElapsedTime();
+
+      // Smooth Camera Orbit & Interpolation
+      const distX = targetCamPos.x - targetLookAt.x;
+      const distZ = targetCamPos.z - targetLookAt.z;
+      const baseRadius = Math.sqrt(distX * distX + distZ * distZ) + cameraZoomOffset;
+      const baseAngle = Math.atan2(distX, distZ) + cameraOrbitAngle;
+
+      const desiredX = targetLookAt.x + Math.sin(baseAngle) * baseRadius;
+      const desiredZ = targetLookAt.z + Math.cos(baseAngle) * baseRadius;
+
+      camera.position.x += (desiredX - camera.position.x) * 0.06;
+      camera.position.y += (targetCamPos.y - camera.position.y) * 0.06;
+      camera.position.z += (desiredZ - camera.position.z) * 0.06;
+
+      currentLookAt.lerp(targetLookAt, 0.08);
+      camera.lookAt(currentLookAt);
+
+      // Animate Sea of Clouds
+      clouds.forEach((c) => {
+        c.userData.angle += c.userData.speed;
+        c.position.x = Math.cos(c.userData.angle) * c.userData.dist;
+        c.position.z = Math.sin(c.userData.angle) * c.userData.dist;
+      });
+
+      // Animate Weather Station Anemometer
+      anemometerBlades.rotation.y += 0.05 + anemometerBoost;
+      anemometerBoost *= 0.97;
+
+      // Animate Player Wind Spirit Avatar
+      windCore.rotation.y += 0.03;
+      windHalo.rotation.z -= 0.04;
+
+      if (currentChapter === 5) {
+        // Chapter 6 Downhill Wind Gliding along the mountain streams
+        glideProgress = (glideProgress + 0.0028) % 1;
+        const activeCurve = streamCurves[gliderX + 1] || streamCurves[1];
+        const pt = activeCurve.getPoint(glideProgress);
+        playerAvatar.position.lerp(new THREE.Vector3(pt.x, pt.y + 0.9, pt.z), 0.15);
+
+        // Rotate musical note rings
+        streamNotes.forEach((ring) => {
+          ring.rotation.y += 0.04;
+          if (playerAvatar.position.distanceTo(ring.position) < 2.2 && !ring.userData.collected) {
+            ring.userData.collected = true;
+            ring.scale.set(1.5, 1.5, 1.5);
+            playChime(523.25 + ring.userData.index * 60, 0.25);
+            addProgress(5, 12.5, `🎵 收集到山頂滑溜音符！`);
+            setTimeout(() => {
+              ring.scale.set(1, 1, 1);
+              ring.userData.collected = false;
+            }, 4000);
+          }
+        });
+      } else {
+        playerAvatar.position.y += Math.sin(elapsed * 3) * 0.015;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Initialize Game
+    initConcretePoemStage();
+    initQuizModal();
+    switchChapter(0);
+    animate();
+  </script>
+</body>
+</html>
